@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Collection</title>
+</head>
+<body>
+    <section>
+        <h1>Articles</h1>
+        {{range .Articles}}
+        <div>
+            <h2><a href="/ressource?id={{.ID}}">{{.Title}}</a></h2>
+            <img src="{{.ImageURL}}" alt="Article Image" style="width:200px;">
+            <p>{{.Summary}}</p>
+            <a href="{{.URL}}">Lire plus</a>
+            <p>Publié le : {{.PublishedAt}}</p>
+        </div>
+        {{end}}
+    </section>
+
+    <section>
+        <h1>Reports</h1>
+        {{range .Reports}}
+        <div>
+            <h2><a href="/ressource?id={{.ID}}">{{.Title}}</a></h2>
+            <img src="{{.ImageURL}}" alt="Article Image" style="width:200px;">
+            <p>{{.Summary}}</p>
+            <a href="{{.URL}}">Lire plus</a>
+            <p>Publié le : {{.PublishedAt}}</p>
+        </div>
+        {{end}}
+    </section>
+
+    <section>
+        <h1>Blogs</h1>
+        {{range .Blogs}}
+        <div>
+            <h2><a href="/ressource?id={{.ID}}">{{.Title}}</a></h2>
+            <img src="{{.ImageURL}}" alt="Article Image" style="width:200px;">
+            <p>{{.Summary}}</p>
+            <a href="{{.URL}}">Lire plus</a>
+            <p>Publié le : {{.PublishedAt}}</p>
+        </div>
+        {{end}}
+    </section>
+</body>
+</html>

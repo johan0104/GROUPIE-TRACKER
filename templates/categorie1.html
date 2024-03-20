@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Articles</title>
+</head>
+<body>
+    <h1>Articles</h1>
+    {{range .}}
+    <div>
+        <!-- Lien cliquable pour le titre dirigeant vers les détails de la ressource -->
+        <h2><a href="/ressource?id={{.ID}}">{{.Title}}</a></h2>
+        <img src="{{.ImageURL}}" alt="Article Image" style="width:200px;">
+        <p>{{.Summary}}</p>
+        <a href="{{.URL}}">Lire plus</a>
+        <p>Publié le : {{.PublishedAt}}</p>
+    </div>
+    {{end}}
+</body>
+</html>
