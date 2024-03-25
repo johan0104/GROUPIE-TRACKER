@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Favoris</title>
+</head>
+
+<body>
+    <h1>Favoris</h1>
+    {{range .}}
+    <div>
+        <h2>{{.Title}}</h2>
+        <img src="{{.ImageURL}}" alt="Image" style="width:200px;">
+        <p>{{.Summary}}</p>
+        <a href="{{.URL}}">Lire plus</a>
+        <p>Publié le : {{.PublishedAt}}</p>
+        <!-- Bouton pour retirer des favoris (à gérer côté serveur) -->
+        <form action="/remove-from-favorites" method="get">
+            <input type="hidden" name="resourceID" value="{{.ID}}">
+            <button type="submit">Retirer des favoris</button>
+        </form>
+    </div>
+    {{else}}
+    <p>Aucun favori ajouté.</p>
+    {{end}}
+</body>
+
+</html>

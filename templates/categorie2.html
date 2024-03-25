@@ -1,20 +1,28 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <title>Rapports</title>
 </head>
+
 <body>
     <h1>Rapports</h1>
     {{range .}}
     <div>
         <!-- Lien cliquable pour le titre dirigeant vers les détails de la ressource -->
-        <h2><a href="/ressource?id={{.ID}}">{{.Title}}</a></h2>
+        <h2><a href="/ressource?type=reports&id={{.ID}}">{{.Title}}</a></h2>
         <img src="{{.ImageURL}}" alt="Report Image" style="width:200px;">
         <p>{{.Summary}}</p>
         <a href="{{.URL}}">Lire plus</a>
         <p>Publié le : {{.PublishedAt}}</p>
+        <form action="/add-to-favorites" method="post">
+            <input type="hidden" name="resourceID" value="{{.ID}}">
+            <button type="submit">Ajouter aux favoris</button>
+        </form>
+
     </div>
     {{end}}
 </body>
+
 </html>

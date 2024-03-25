@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Résultats de recherche</title>
+</head>
+<body>
+    <h1>Résultats de recherche</h1>
+    {{if .}}
+        {{range .}}
+        <div>
+            <h2><a href="/ressource?type=articles&id={{.ID}}">{{.Title}}</a></h2>
+            <img src="{{.ImageURL}}" alt="Article Image" style="width:200px;">
+            <p>{{.Summary}}</p>
+            <a href="{{.URL}}">Lire plus</a>
+            <p>Publié le : {{.PublishedAt}}</p>
+            <form action="/add-to-favorites" method="post">
+                <input type="hidden" name="resourceID" value="{{.ID}}">
+                <button type="submit">Ajouter aux favoris</button>
+            </form>
+        </div>
+        {{end}}
+    {{else}}
+        <p>Aucun résultat trouvé pour votre recherche.</p>
+    {{end}}
+</body>
+</html>

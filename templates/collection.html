@@ -1,18 +1,29 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Collection</title>
 </head>
+
 <body>
+    <form action="/recherche" method="get">
+        <input type="text" name="q" placeholder="Rechercher..." required>
+        <button type="submit">Rechercher</button>
+    </form>
+
     <section>
         <h1>Articles</h1>
         {{range .Articles}}
         <div>
-            <h2><a href="/ressource?id={{.ID}}">{{.Title}}</a></h2>
+            <h2><a href="/ressource?type=articles&id={{.ID}}">{{.Title}}</a></h2>
             <img src="{{.ImageURL}}" alt="Article Image" style="width:200px;">
             <p>{{.Summary}}</p>
             <a href="{{.URL}}">Lire plus</a>
             <p>Publié le : {{.PublishedAt}}</p>
+            <form action="/add-to-favorites" method="post">
+                <input type="hidden" name="resourceID" value="{{.ID}}">
+                <button type="submit">Ajouter aux favoris</button>
+            </form>
         </div>
         {{end}}
     </section>
@@ -21,11 +32,15 @@
         <h1>Reports</h1>
         {{range .Reports}}
         <div>
-            <h2><a href="/ressource?id={{.ID}}">{{.Title}}</a></h2>
+            <h2><a href="/ressource?type=reports&id={{.ID}}">{{.Title}}</a></h2>
             <img src="{{.ImageURL}}" alt="Article Image" style="width:200px;">
             <p>{{.Summary}}</p>
             <a href="{{.URL}}">Lire plus</a>
             <p>Publié le : {{.PublishedAt}}</p>
+            <form action="/add-to-favorites" method="post">
+                <input type="hidden" name="resourceID" value="{{.ID}}">
+                <button type="submit">Ajouter aux favoris</button>
+            </form>
         </div>
         {{end}}
     </section>
@@ -34,13 +49,18 @@
         <h1>Blogs</h1>
         {{range .Blogs}}
         <div>
-            <h2><a href="/ressource?id={{.ID}}">{{.Title}}</a></h2>
+            <h2><a href="/ressource?type=blogs&id={{.ID}}">{{.Title}}</a></h2>
             <img src="{{.ImageURL}}" alt="Article Image" style="width:200px;">
             <p>{{.Summary}}</p>
             <a href="{{.URL}}">Lire plus</a>
             <p>Publié le : {{.PublishedAt}}</p>
+            <form action="/add-to-favorites" method="post">
+                <input type="hidden" name="resourceID" value="{{.ID}}">
+                <button type="submit">Ajouter aux favoris</button>
+            </form>
         </div>
         {{end}}
     </section>
 </body>
+
 </html>

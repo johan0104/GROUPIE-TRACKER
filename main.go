@@ -1,214 +1,340 @@
 package main
 
 import (
-    "fmt"
-    "html/template"
-    "net/http"
-    "encoding/json"
-    "time"
+	"encoding/json"
+	"fmt"
+	"html/template"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
 )
 
-var templates = template.Must(template.ParseFiles("templates/accueil.html", "templates/connexion.html", "templates/collection.html", "templates/categorie1.html", "templates/categorie2.html", "templates/categorie3.html", "templates/ressource.html", "templates/favoris.html", "templates/recherche.html", "templates/apropos.html", "templates/erreur404.html",))
+var templates = template.Must(template.ParseFiles("templates/accueil.html", "templates/collection.html", "templates/categorie1.html", "templates/categorie2.html", "templates/categorie3.html", "templates/ressource.html", "templates/favoris.html", "templates/recherche.html", "templates/apropos.html", "templates/erreur404.html"))
+
+const favoritesFilePath = "favorites.json"
+
+type Favorites struct {
+    Articles []string `json:"articles"` // IDs des articles favoris
+}
 
 // Struct pour les données que vous souhaitez passer à vos templates
 type PageData struct {
-    ID          int    `json:"id"`
-    Title       string `json:"title"`
-    URL         string `json:"url"`
-    ImageURL    string `json:"imageUrl"`
-    NewsSite    string `json:"newsSite"`
-    Summary     string `json:"summary"`
-    PublishedAt string `json:"publishedAt"`
-    UpdatedAt   string `json:"updatedAt"`
+	ID          int    `json:"id"`
+	Title       string `json:"title"`
+	URL         string `json:"url"`
+	ImageURL    string `json:"imageUrl"`
+	NewsSite    string `json:"newsSite"`
+	Summary     string `json:"summary"`
+	PublishedAt string `json:"publishedAt"`
+	UpdatedAt   string `json:"updatedAt"`
 }
 
 func main() {
-// Gère la route "/static/" pour servir des fichiers statiques depuis le dossier "static"
-http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	// Gère la route "/static/" pour servir des fichiers statiques depuis le dossier "static"
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
-http.HandleFunc("/accueil", accueilHandler)
-http.HandleFunc("/connexion", connexionHandler)
-http.HandleFunc("/collection", collectionHandler)
-http.HandleFunc("/categorie1", categorieHandler("https://api.spaceflightnewsapi.net/v3/articles/"))
-http.HandleFunc("/categorie2", categorieHandler("https://api.spaceflightnewsapi.net/v3/reports"))
-http.HandleFunc("/categorie3", categorieHandler("https://api.spaceflightnewsapi.net/v3/blogs/"))
-http.HandleFunc("/ressource", ressourceHandler)
-http.HandleFunc("/favoris", favorisHandler)
-http.HandleFunc("/recherche", rechercheHandler) 
-http.HandleFunc("/apropos", aproposHandler)
-http.HandleFunc("/erreur404", erreur404Handler)
+	http.HandleFunc("/accueil", accueilHandler)
+	http.HandleFunc("/collection", collectionHandler)
+	http.HandleFunc("/categorie1", categorieHandler("https://api.spaceflightnewsapi.net/v3/articles?_limit=50"))
+	http.HandleFunc("/categorie2", categorieHandler("https://api.spaceflightnewsapi.net/v3/reports?_limit=50"))
+	http.HandleFunc("/categorie3", categorieHandler("https://api.spaceflightnewsapi.net/v3/blogs?_limit=50"))
+	http.HandleFunc("/ressource", ressourceHandler)
+	http.HandleFunc("/add-to-favorites", addToFavoritesHandler)
+	http.HandleFunc("/remove-from-favorites", removeFromFavoritesHandler)
+	http.HandleFunc("/favoris", favorisHandler)
+	http.HandleFunc("/recherche", rechercheHandler)
+	http.HandleFunc("/apropos", aproposHandler)
+	http.HandleFunc("/erreur404", erreur404Handler)
 
-// Démarrez le serveur web
-fmt.Println("Server started at http://localhost:7070")
-http.ListenAndServe(":7070", nil)
+	// Démarrez le serveur web
+	fmt.Println("Server started at http://localhost:7070")
+	http.ListenAndServe(":7070", nil)
 }
 
-
 func categorieHandler(url string) func(http.ResponseWriter, *http.Request) {
-    return func(w http.ResponseWriter, r *http.Request) {
-        httpClient := &http.Client{Timeout: time.Second * 10}
-        req, err := http.NewRequest(http.MethodGet, url, nil)
-        if err != nil {
-            http.Error(w, "Unable to create request", http.StatusInternalServerError)
-            return
-        }
+	return func(w http.ResponseWriter, r *http.Request) {
+		httpClient := &http.Client{Timeout: time.Second * 10}
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		if err != nil {
+			http.Error(w, "Unable to create request", http.StatusInternalServerError)
+			return
+		}
 
-        res, err := httpClient.Do(req)
-        if err != nil {
-            http.Error(w, "Failed to fetch data", http.StatusInternalServerError)
-            return
-        }
-        defer res.Body.Close()
+		res, err := httpClient.Do(req)
+		if err != nil {
+			http.Error(w, "Failed to fetch data", http.StatusInternalServerError)
+			return
+		}
+		defer res.Body.Close()
 
-        var data []PageData
-        if err := json.NewDecoder(res.Body).Decode(&data); err != nil {
-            http.Error(w, "Failed to decode data", http.StatusInternalServerError)
-            return
-        }
+		var data []PageData
+		if err := json.NewDecoder(res.Body).Decode(&data); err != nil {
+			http.Error(w, "Failed to decode data", http.StatusInternalServerError)
+			return
+		}
 
-        templateName := ""
-        switch url {
-        case "https://api.spaceflightnewsapi.net/v3/articles/":
-            templateName = "categorie1.html"
-        case "https://api.spaceflightnewsapi.net/v3/reports":
-            templateName = "categorie2.html"
-        case "https://api.spaceflightnewsapi.net/v3/blogs/":
-            templateName = "categorie3.html"
-        }
+		templateName := ""
+		switch url {
+		case "https://api.spaceflightnewsapi.net/v3/articles?_limit=50":
+			templateName = "categorie1.html"
+		case "https://api.spaceflightnewsapi.net/v3/reports?_limit=50":
+			templateName = "categorie2.html"
+		case "https://api.spaceflightnewsapi.net/v3/blogs?_limit=50":
+			templateName = "categorie3.html"
+		}
 
-        templates.ExecuteTemplate(w, templateName, data)
-    }
+		templates.ExecuteTemplate(w, templateName, data)
+	}
 }
 
 func collectionHandler(w http.ResponseWriter, r *http.Request) {
-    // Définissez les URLs des endpoints
-    urls := []string{
-        "https://api.spaceflightnewsapi.net/v3/articles/",
-        "https://api.spaceflightnewsapi.net/v3/reports",
-        "https://api.spaceflightnewsapi.net/v3/blogs/",
-    }
+	// Définissez les URLs des endpoints
+	urls := []string{
+		"https://api.spaceflightnewsapi.net/v3/articles?_limit=50",
+		"https://api.spaceflightnewsapi.net/v3/reports?_limit=50",
+		"https://api.spaceflightnewsapi.net/v3/blogs?_limit=50",
+	}
 
-    httpClient := &http.Client{Timeout: time.Second * 10}
+	httpClient := &http.Client{Timeout: time.Second * 10}
 
-    // Créez un conteneur pour les données de chaque catégorie
-    var data struct {
-        Articles []PageData
-        Reports  []PageData
-        Blogs    []PageData
-    }
+	// Créez un conteneur pour les données de chaque catégorie
+	var data struct {
+		Articles []PageData
+		Reports  []PageData
+		Blogs    []PageData
+	}
 
-    // Parcourez chaque URL et récupérez les données
-    for _, url := range urls {
-        req, err := http.NewRequest(http.MethodGet, url, nil)
-        if err != nil {
-            http.Error(w, "Unable to create request", http.StatusInternalServerError)
-            return
-        }
+	// Parcourez chaque URL et récupérez les données
+	for _, url := range urls {
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		if err != nil {
+			http.Error(w, "Unable to create request", http.StatusInternalServerError)
+			return
+		}
 
-        res, err := httpClient.Do(req)
-        if err != nil {
-            http.Error(w, "Failed to fetch data", http.StatusInternalServerError)
-            return
-        }
-        defer res.Body.Close()
+		res, err := httpClient.Do(req)
+		if err != nil {
+			http.Error(w, "Failed to fetch data", http.StatusInternalServerError)
+			return
+		}
+		defer res.Body.Close()
 
-        // Utilisez le bon conteneur en fonction de l'URL
-        var tmpData []PageData
-        if err := json.NewDecoder(res.Body).Decode(&tmpData); err != nil {
-            http.Error(w, "Failed to decode data", http.StatusInternalServerError)
-            return
-        }
+		// Utilisez le bon conteneur en fonction de l'URL
+		var tmpData []PageData
+		if err := json.NewDecoder(res.Body).Decode(&tmpData); err != nil {
+			http.Error(w, "Failed to decode data", http.StatusInternalServerError)
+			return
+		}
 
-        switch url {
-        case "https://api.spaceflightnewsapi.net/v3/articles/":
-            data.Articles = tmpData
-        case "https://api.spaceflightnewsapi.net/v3/reports":
-            data.Reports = tmpData
-        case "https://api.spaceflightnewsapi.net/v3/blogs/":
-            data.Blogs = tmpData
-        }
-    }
+		switch url {
+		case "https://api.spaceflightnewsapi.net/v3/articles?_limit=50":
+			data.Articles = tmpData
+		case "https://api.spaceflightnewsapi.net/v3/reports?_limit=50":
+			data.Reports = tmpData
+		case "https://api.spaceflightnewsapi.net/v3/blogs?_limit=50":
+			data.Blogs = tmpData
+		}
+	}
 
-    // Passez les données collectées au template
-    templates.ExecuteTemplate(w, "collection.html", data)
+	// Passez les données collectées au template
+	templates.ExecuteTemplate(w, "collection.html", data)
 }
 
 func ressourceHandler(w http.ResponseWriter, r *http.Request) {
-    // Extraire l'ID de la requête
-    ids, ok := r.URL.Query()["id"]
-    if !ok || len(ids[0]) < 1 {
-        http.Error(w, "ID de la ressource manquant", http.StatusBadRequest)
+	// Extraire le type et l'ID de la requête
+	query := r.URL.Query()
+	typeRes := query.Get("type")
+	id := query.Get("id")
+
+	fmt.Println(typeRes)
+
+	if typeRes == "" || id == "" {
+		http.Error(w, "Type ou ID de la ressource manquant", http.StatusBadRequest)
+		return
+	}
+	ressourceDetails, err := fetchRessourceDetails(typeRes, id)
+	if err != nil {
+		http.Error(w, "Échec de la récupération des détails de la ressource", http.StatusInternalServerError)
+		return
+	}
+
+	// Passez les détails récupérés au template de la page de détail
+	templates.ExecuteTemplate(w, "ressource.html", ressourceDetails)
+}
+
+func fetchRessourceDetails(typeRes, id string) (*PageData, error) {
+	// Liste des endpoints à essayer. Vous devez les remplacer par les vrais endpoints.
+	endpoints := fmt.Sprintf("https://api.spaceflightnewsapi.net/v3/%s/%s", typeRes, id)
+
+	httpClient := &http.Client{Timeout: time.Second * 10}
+	var data PageData
+
+	// Essayez chaque endpoint jusqu'à ce que vous trouviez la ressource ou que vous épuisiez les options.
+	fmt.Println("Tentative avec URL:", endpoints) // Ajout de log pour débogage
+	req, err := http.NewRequest(http.MethodGet, endpoints, nil)
+	if err != nil {
+		fmt.Println("Erreur lors de la création de la requête :", err)
+	}
+
+	res, err := httpClient.Do(req)
+	if err != nil || res.StatusCode != http.StatusOK {
+		fmt.Println("Erreur ou code d'état HTTP non-OK :", res.StatusCode)
+	}
+	defer res.Body.Close()
+
+	if err := json.NewDecoder(res.Body).Decode(&data); err == nil {
+		return &data, nil
+	}
+	// Ajoutez un log ici si le décodage échoue, pour voir que la requête a réussi mais le décodage non.
+
+	return nil, fmt.Errorf("la ressource avec l'ID %s n'a pas été trouvée", id)
+}
+
+func rechercheHandler(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("q")
+	if query == "" {
+		http.Error(w, "Requête de recherche vide", http.StatusBadRequest)
+		return
+	}
+
+	// Ici, implémentez la logique pour récupérer toutes vos ressources.
+	// Pour cet exemple, nous faisons semblant avec une fonction fetchAllResources()
+	allResources, err := fetchAllResources()
+	if err != nil {
+		http.Error(w, "Erreur lors de la récupération des ressources", http.StatusInternalServerError)
+		return
+	}
+
+	var results []PageData
+	for _, resource := range allResources {
+		if strings.Contains(strings.ToLower(resource.Title), strings.ToLower(query)) {
+			results = append(results, resource)
+		}
+	}
+
+	// Assurez-vous d'avoir un template `recherche.html` capable d'afficher les résultats
+	templates.ExecuteTemplate(w, "recherche.html", results)
+}
+
+// Implémentez fetchAllResources selon votre source de données
+func fetchAllResources() ([]PageData, error) {
+	urls := []string{
+		"https://api.spaceflightnewsapi.net/v3/articles?_limit=50",
+		"https://api.spaceflightnewsapi.net/v3/reports?_limit=50",
+		"https://api.spaceflightnewsapi.net/v3/blogs?_limit=50",
+	}
+
+	var allResources []PageData
+	httpClient := &http.Client{Timeout: time.Second * 10}
+
+	for _, url := range urls {
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		if err != nil {
+			return nil, fmt.Errorf("creating request failed: %v", err)
+		}
+
+		res, err := httpClient.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("fetching data failed: %v", err)
+		}
+
+		var resources []PageData
+		if err := json.NewDecoder(res.Body).Decode(&resources); err != nil {
+			res.Body.Close() // Assurez-vous de fermer le corps de la réponse avant de retourner une erreur
+			return nil, fmt.Errorf("decoding data failed: %v", err)
+		}
+		res.Body.Close() // Fermez le corps de la réponse après l'avoir lu
+
+		allResources = append(allResources, resources...)
+	}
+
+	return allResources, nil
+}
+
+var allArticles = []PageData{}
+
+
+var favoriteArticles []string
+
+
+func addToFavoritesHandler(w http.ResponseWriter, r *http.Request) {
+    if r.Method != "POST" {
+        http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
         return
     }
-    id := ids[0]
 
-    // Supposons que vous avez une fonction qui peut déterminer le type de la ressource (article, rapport, blog) et récupérer les détails en fonction de l'ID.
-    ressourceDetails, err := fetchRessourceDetails(id)
+    resourceID := r.FormValue("resourceID")
+    if resourceID == "" {
+        http.Error(w, "Resource ID is required", http.StatusBadRequest)
+        return
+    }
+
+    // Ajouter l'ID de la ressource à la liste des favoris
+    favoriteArticles = append(favoriteArticles, resourceID)
+
+    // Rediriger vers la page des favoris
+    http.Redirect(w, r, "/favoris", http.StatusFound)
+}
+
+
+func favorisHandler(w http.ResponseWriter, r *http.Request) {
+    var favoriteArticlesDetails []PageData // Pour stocker les détails des articles favoris
+
+    // Simuler la récupération des détails pour chaque article favori
+    // Dans une application réelle, vous feriez une requête à votre base de données ou API externe ici
+    for _, articleID := range favoriteArticles {
+        articleDetails, err := fetchArticleDetails(articleID) // Implémentez cette fonction selon votre logique
+        if err == nil {
+            favoriteArticlesDetails = append(favoriteArticlesDetails, articleDetails)
+        }
+    }
+
+    // Passez les détails des articles favoris au template pour l'affichage
+    templates.ExecuteTemplate(w, "favoris.html", favoriteArticlesDetails)
+}
+
+func fetchArticleDetails(articleID string) (PageData, error) {
+    // Convertir l'ID de l'article en int pour la comparaison
+    id, err := strconv.Atoi(articleID)
     if err != nil {
-        http.Error(w, "Échec de la récupération des détails de la ressource", http.StatusInternalServerError)
-        return
+        return PageData{}, err // Retourne une erreur si l'ID n'est pas un entier valide
     }
 
-    // Passez les détails récupérés au template de la page de détail
-    templates.ExecuteTemplate(w, "ressource.html", ressourceDetails)
+    // Parcourir la slice des articles pour trouver l'article par son ID
+    for _, article := range allArticles {
+        if article.ID == id {
+            return article, nil // Article trouvé
+        }
+    }
+
+    // Retourne une erreur si l'article n'est pas trouvé
+    return PageData{}, fmt.Errorf("article with ID %s not found", articleID)
 }
 
-func fetchRessourceDetails(id string) (*PageData, error) {
-    // Liste des endpoints à essayer. Vous devez les remplacer par les vrais endpoints.
-    endpoints := []string{
-        "https://api.spaceflightnewsapi.net/v3/articles//%s",
-        "https://api.spaceflightnewsapi.net/v3/reports/%s",
-        "https://api.spaceflightnewsapi.net/v3/blogs//%s",
-    }
+func removeFromFavoritesHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
 
-    httpClient := &http.Client{Timeout: time.Second * 10}
-    var data PageData
+	resourceID := r.FormValue("resourceID") // Reste en tant que string
 
-    // Essayez chaque endpoint jusqu'à ce que vous trouviez la ressource ou que vous épuisiez les options.
-    for _, endpoint := range endpoints {
-        url := fmt.Sprintf(endpoint, id)
-        fmt.Println("Tentative avec URL:", url) // Ajout de log pour débogage
-        req, err := http.NewRequest(http.MethodGet, url, nil)
-        if err != nil {
-            fmt.Println("Erreur lors de la création de la requête :", err)
-            continue
-        }
-    
-        res, err := httpClient.Do(req)
-        if err != nil || res.StatusCode != http.StatusOK {
-            fmt.Println("Erreur ou code d'état HTTP non-OK :", res.StatusCode)
-            continue
-        }
-        defer res.Body.Close()
-    
-        if err := json.NewDecoder(res.Body).Decode(&data); err == nil {
-            return &data, nil
-        }
-        // Ajoutez un log ici si le décodage échoue, pour voir que la requête a réussi mais le décodage non.
-    }
-    
+	// Retire l'ID de la liste des favoris
+	for i, id := range favoriteArticles {
+		if id == resourceID { // Compare en tant que string
+			favoriteArticles = append(favoriteArticles[:i], favoriteArticles[i+1:]...)
+			break
+		}
+	}
 
-    return nil, fmt.Errorf("la ressource avec l'ID %s n'a pas été trouvée", id)
+	http.Redirect(w, r, "/favoris", http.StatusFound) // Rediriger vers la page des favoris
 }
+
 
 func accueilHandler(w http.ResponseWriter, r *http.Request) {
 
 	templates.ExecuteTemplate(w, "accueil.html", r)
-}
-
-func connexionHandler(w http.ResponseWriter, r *http.Request) {
-
-	templates.ExecuteTemplate(w, "connexion.html", r)
-}
-
-func favorisHandler(w http.ResponseWriter, r *http.Request) {
-
-	templates.ExecuteTemplate(w, "favoris.html", r)
-}
-
-func rechercheHandler(w http.ResponseWriter, r *http.Request) {
-
-	templates.ExecuteTemplate(w, "recherche.html", r)
 }
 
 func aproposHandler(w http.ResponseWriter, r *http.Request) {
@@ -220,263 +346,3 @@ func erreur404Handler(w http.ResponseWriter, r *http.Request) {
 
 	templates.ExecuteTemplate(w, "erreur404.html", r)
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-
-// Struct pour les données combinées de tous les endpoints
-type CombinedData struct {
-    Data1 *PageData
-    Data2 *PageData
-    Data3 *PageData
-}
-
-// Struct pour les données que vous souhaitez passer à vos templates
-type PageData struct {
-    ID          int    `json:"id"`
-    Title       string `json:"title"`
-    URL         string `json:"url"`
-    ImageURL    string `json:"imageUrl"`
-    NewsSite    string `json:"newsSite"`
-    Summary     string `json:"summary"`
-    PublishedAt string `json:"publishedAt"`
-    UpdatedAt   string `json:"updatedAt"`
-}
-
-func main() {
-    // Gestion des fichiers statiques (assets)
-    rootDoc, _ := os.Getwd()
-	fileserver := http.FileServer(http.Dir(rootDoc + "/asset"))
-	http.Handle("/static/", http.StripPrefix("/static/", fileserver))
-
-	// Analyser tous les fichiers de modèle correspondants à un modèle de nom de fichier particulier
-    tmpl, err := template.ParseGlob("asset/templates/*.html")
-   	if err != nil {
-	    log.Fatal(err)
-	}
-
-    // Définir les routes
-    http.HandleFunc("/accueil", func(w http.ResponseWriter, r *http.Request) {
-        renderTemplate(w, tmpl, "accueil", &PageData{Title: "accueil"})
-    })
-
-    http.HandleFunc("/connection", func(w http.ResponseWriter, r *http.Request) {
-        renderTemplate(w, tmpl,  "connection", &PageData{Title: "Connection"})
-    })
-
-    http.HandleFunc("/collection", func(w http.ResponseWriter, r *http.Request) {
-        // Récupérer les données depuis les endpoints API
-        combinedData, err := fetchData()
-        if err != nil {
-            http.Error(w, "Erreur lors de la récupération des données", http.StatusInternalServerError)
-            return
-        }
-
-        // Afficher les données dans le template
-        renderTemplate(w, tmpl, "collection", combinedData.Data1)
-    })
-
-    http.HandleFunc("/categorie", func(w http.ResponseWriter, r *http.Request) {
-        // Récupérer les données depuis les endpoints API
-        combinedData, err := fetchData()
-        if err != nil {
-            http.Error(w, "Erreur lors de la récupération des données", http.StatusInternalServerError)
-            return
-        }
-
-        // Afficher les données dans le template
-        renderTemplate(w, tmpl, "categorie", combinedData.Data2)
-    })
-
-    http.HandleFunc("/ressource", func(w http.ResponseWriter, r *http.Request) {
-        // Récupérer les données depuis les endpoints API
-        combinedData, err := fetchData()
-        if err != nil {
-            http.Error(w, "Erreur lors de la récupération des données", http.StatusInternalServerError)
-            return
-        }
-
-        // Afficher les données dans le template
-        renderTemplate(w, tmpl, "ressource", combinedData.Data3)
-    })
-
-    http.HandleFunc("/favoris", func(w http.ResponseWriter, r *http.Request) {
-        // Récupérer les données depuis les endpoints API
-        combinedData, err := fetchData()
-        if err != nil {
-            http.Error(w, "Erreur lors de la récupération des données", http.StatusInternalServerError)
-            return
-        }
-
-        // Afficher les données dans le template
-        renderTemplate(w, tmpl, "favoris", combinedData.Data1) // Par exemple, vous pouvez utiliser combinedData.Data1 ou combinedData.Data2 ici
-    })
-
-    http.HandleFunc("/recherche", func(w http.ResponseWriter, r *http.Request) {
-        // Récupérer les données depuis les endpoints API
-        combinedData, err := fetchData()
-        if err != nil {
-            http.Error(w, "Erreur lors de la récupération des données", http.StatusInternalServerError)
-            return
-        }
-
-        // Afficher les données dans le template
-        renderTemplate(w, tmpl, "recherche", combinedData.Data2) // Par exemple, vous pouvez utiliser combinedData.Data1 ou combinedData.Data2 ici
-    })
-
-    http.HandleFunc("/apropos", func(w http.ResponseWriter, r *http.Request) {
-        renderTemplate(w, tmpl, "accueil", &PageData{Title: "A propos"})
-    })
-
-    // Page 404 - si aucune route ne correspond
-    http.HandleFunc("/404", func(w http.ResponseWriter, r *http.Request) {
-        w.WriteHeader(http.StatusNotFound)
-        renderTemplate(w, tmpl,  "accueil", &PageData{Title: "Page non trouvée"})
-    })
-
-    // Démarrer le serveur sur le port 7070
-    http.ListenAndServe(":7070", nil)
-}
-
-func renderTemplate(w http.ResponseWriter, tmpl *template.Template, tmplName string, data *PageData) {
-    // Exécuter le template avec les données
-    err := tmpl.ExecuteTemplate(w, tmplName+".html", data)
-    if err != nil {
-        log.Printf("Erreur lors du rendu du template %s: %v", tmplName, err) // Ajoutez ce log pour capturer les erreurs
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-}
-
-// Fonction pour récupérer les données depuis les endpoints API
-func fetchData() (CombinedData, error) {
-    // Envoyer une requête HTTP GET à chaque endpoint API
-    resp1, err := http.Get("https://api.spaceflightnewsapi.net/v3/articles")
-    if err != nil {
-        return CombinedData{}, err
-    }
-    defer resp1.Body.Close()
-
-    resp2, err := http.Get("https://api.spaceflightnewsapi.net/v3/reports")
-    if err != nil {
-        return CombinedData{}, err
-    }
-    defer resp2.Body.Close()
-
-    resp3, err := http.Get("https://api.spaceflightnewsapi.net/v3/blogs")
-    if err != nil {
-        return CombinedData{}, err
-    }
-    defer resp3.Body.Close()
-
-    // Analyser les réponses JSON et combiner les données
-    var data1 PageData
-    if err := json.NewDecoder(resp1.Body).Decode(&data1); err != nil {
-        return CombinedData{}, err
-    }
-
-    var data2 PageData
-    if err := json.NewDecoder(resp2.Body).Decode(&data2); err != nil {
-        return CombinedData{}, err
-    }
-
-    var data3 PageData
-    if err := json.NewDecoder(resp3.Body).Decode(&data3); err != nil {
-        return CombinedData{}, err
-    }
-
-    combinedData := CombinedData{
-        Data1: &data1,
-        Data2: &data2,
-        Data3: &data3,
-    }
-    return combinedData, nil
-}
-
-*/

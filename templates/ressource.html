@@ -1,13 +1,20 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>{{.Title}}</title>
 </head>
+
 <body>
     <h1>{{.Title}}</h1>
     <img src="{{.ImageURL}}" alt="Image de la ressource">
     <p>{{.Summary}}</p>
     <p>Publié le : {{.PublishedAt}}</p>
     <a href="{{.URL}}">Lire plus</a>
+    <form action="/add-to-favorites" method="post">
+        <input type="hidden" name="resourceID" value="{{.ID}}">
+        <button type="submit">Ajouter aux favoris</button>
+    </form>
+
 </body>
 </html>
