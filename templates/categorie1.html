@@ -3,26 +3,65 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Articles</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="static/style/categorie1.css">
+    <title>Article</title>
 </head>
 
 <body>
-    <h1>Articles</h1>
-    {{range .}}
-    <div>
-        <!-- Lien cliquable pour le titre dirigeant vers les détails de la ressource -->
-        <h2><a href="/ressource?type=articles&id={{.ID}}">{{.Title}}</a></h2>
-        <img src="{{.ImageURL}}" alt="Article Image" style="width:200px;">
-        <p>{{.Summary}}</p>
-        <a href="{{.URL}}">Lire plus</a>
-        <p>Publié le : {{.PublishedAt}}</p>
-        <form action="/add-to-favorites" method="post">
-            <input type="hidden" name="resourceID" value="{{.ID}}">
-            <button type="submit">Ajouter aux favoris</button>
-        </form>
+    <header class="header">
+        <nav>
+            <a href="/categorie1">ARTICLE</a>
+            <a href="/categorie2">RAPPORT</a>
+            <a href="/categorie3">BLOG</a>
+            <a class="logo" href="/accueil"> <img src="/static/image/logo.png"> </a>
+            <a href="/collection">COLLECTION</a>
+            <a href="/favoris">FAVORIS</a>
+        </nav>
+    </header>
 
-    </div>
-    {{end}}
+   
+    <div class="nosarticles">
+        <h1>NOS ARTICLES </h1>
+
+
+        <div class="rectangle-article-row">
+            {{range .}}
+            <div class="img">
+                <img src="{{.ImageURL}}" alt="Article Image" style="width:200px;" style="height:100px;">
+            </div>
+            <div class="corps">
+                <h3><a href="/ressource?type=articles&id={{.ID}}">{{.Title}}</a></h3>
+                <h2>{{.Summary}}</h2>
+                <a href="{{.URL}}">Lire plus</a>
+                <p>Publié le : {{.PublishedAt}}</p>
+            </div>
+            <div class="favoris">
+                <form action="/add-to-favorites" method="post">
+                    <input type="hidden" name="resourceID" value="{{.ID}}">
+                    <button type="submit">Ajouter aux favoris</button>
+                </form>
+            </div>
+            {{end}}
+
+        </div>
+
+        <footer class="footer">
+            <div class="footer-container">
+                <a class="logo" href="/accueil"> <img src="/static/image/logo.png"></a>
+                <div class="footer-nav">
+                    <nav>
+                        <a href="/categorie1">ARTICLE</a>
+                        <a href="/categorie2">RAPPORT</a>
+                        <a href="/categorie3">BLOG</a>
+                    </nav>
+                    <nav class="footer-link">
+                        <a href="/apropos">À-PROPOS</a>
+                    </nav>
+                </div>
+            </div>
+        </footer>
 </body>
 
 </html>

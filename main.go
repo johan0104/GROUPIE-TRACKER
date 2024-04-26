@@ -2,10 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"io/ioutil"
+	"os"
 	"fmt"
 	"html/template"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -45,7 +46,9 @@ func main() {
 	http.HandleFunc("/favoris", favorisHandler)
 	http.HandleFunc("/recherche", rechercheHandler)
 	http.HandleFunc("/apropos", aproposHandler)
-	http.HandleFunc("/erreur404", erreur404Handler)
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+        erreur404Handler(w, r)
+    })
 
 	// Démarrez le serveur web
 	fmt.Println("Server started at http://localhost:7070")
@@ -252,12 +255,6 @@ func fetchAllResources() ([]PageData, error) {
 	return allResources, nil
 }
 
-var allArticles = []PageData{}
-
-
-var favoriteArticles []string
-
-
 func addToFavoritesHandler(w http.ResponseWriter, r *http.Request) {
     if r.Method != "POST" {
         http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -270,67 +267,137 @@ func addToFavoritesHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    // Ajouter l'ID de la ressource à la liste des favoris
-    favoriteArticles = append(favoriteArticles, resourceID)
+    favorites, err := loadFavorites() // Charger les favoris existants
+    if err != nil && !os.IsNotExist(err) {
+        http.Error(w, "Failed to load favorites", http.StatusInternalServerError)
+        return
+    }
 
-    // Rediriger vers la page des favoris
+    // Ajouter l'ID de ressource à la liste des favoris, en évitant les doublons
+    for _, id := range favorites.Articles {
+        if id == resourceID {
+            http.Redirect(w, r, "/favoris", http.StatusFound) // ID déjà dans les favoris
+            return
+        }
+    }
+    favorites.Articles = append(favorites.Articles, resourceID)
+
+    if err := saveFavorites(favorites); err != nil { // Utiliser saveFavorites pour sauvegarder les modifications
+        http.Error(w, "Failed to save favorites", http.StatusInternalServerError)
+        return
+    }
+
     http.Redirect(w, r, "/favoris", http.StatusFound)
 }
 
 
-func favorisHandler(w http.ResponseWriter, r *http.Request) {
-    var favoriteArticlesDetails []PageData // Pour stocker les détails des articles favoris
 
-    // Simuler la récupération des détails pour chaque article favori
-    // Dans une application réelle, vous feriez une requête à votre base de données ou API externe ici
-    for _, articleID := range favoriteArticles {
-        articleDetails, err := fetchArticleDetails(articleID) // Implémentez cette fonction selon votre logique
+func favorisHandler(w http.ResponseWriter, r *http.Request) {
+    favorites, err := loadFavorites()
+    if err != nil {
+        http.Error(w, "Failed to load favorites", http.StatusInternalServerError)
+        return
+    }
+
+    // Supposons que vous ayez une fonction pour récupérer les détails des articles par ID
+    var articlesDetails []PageData
+    for _, id := range favorites.Articles {
+        article, err := fetchArticleDetails(id) // Vous devez implémenter cette fonction
         if err == nil {
-            favoriteArticlesDetails = append(favoriteArticlesDetails, articleDetails)
+            articlesDetails = append(articlesDetails, article)
         }
     }
 
-    // Passez les détails des articles favoris au template pour l'affichage
-    templates.ExecuteTemplate(w, "favoris.html", favoriteArticlesDetails)
+    // Passe les détails des articles favoris au template
+    templates.ExecuteTemplate(w, "favoris.html", articlesDetails)
 }
 
+
+
 func fetchArticleDetails(articleID string) (PageData, error) {
-    // Convertir l'ID de l'article en int pour la comparaison
-    id, err := strconv.Atoi(articleID)
+    var article PageData
+    url := fmt.Sprintf("https://api.spaceflightnewsapi.net/v3/articles/%s", articleID)
+    
+    client := &http.Client{Timeout: 10 * time.Second}
+    req, err := http.NewRequest("GET", url, nil)
     if err != nil {
-        return PageData{}, err // Retourne une erreur si l'ID n'est pas un entier valide
+        return article, err
     }
 
-    // Parcourir la slice des articles pour trouver l'article par son ID
-    for _, article := range allArticles {
-        if article.ID == id {
-            return article, nil // Article trouvé
-        }
+    resp, err := client.Do(req)
+    if err != nil {
+        return article, err
+    }
+    defer resp.Body.Close()
+
+    if resp.StatusCode != http.StatusOK {
+        return article, fmt.Errorf("failed to fetch article with ID %s, status code: %d", articleID, resp.StatusCode)
     }
 
-    // Retourne une erreur si l'article n'est pas trouvé
-    return PageData{}, fmt.Errorf("article with ID %s not found", articleID)
+    err = json.NewDecoder(resp.Body).Decode(&article)
+    if err != nil {
+        return article, err
+    }
+
+    return article, nil
 }
 
 func removeFromFavoritesHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
+    if r.Method != "POST" {
+        http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+        return
+    }
 
-	resourceID := r.FormValue("resourceID") // Reste en tant que string
+    resourceID := r.FormValue("resourceID")
+    if resourceID == "" {
+        http.Error(w, "Resource ID is required", http.StatusBadRequest)
+        return
+    }
 
-	// Retire l'ID de la liste des favoris
-	for i, id := range favoriteArticles {
-		if id == resourceID { // Compare en tant que string
-			favoriteArticles = append(favoriteArticles[:i], favoriteArticles[i+1:]...)
-			break
-		}
-	}
+    favorites, err := loadFavorites() // Charger les favoris existants
+    if err != nil {
+        http.Error(w, "Failed to load favorites", http.StatusInternalServerError)
+        return
+    }
 
-	http.Redirect(w, r, "/favoris", http.StatusFound) // Rediriger vers la page des favoris
+    // Retirer l'ID des favoris
+    for i, id := range favorites.Articles {
+        if id == resourceID {
+            favorites.Articles = append(favorites.Articles[:i], favorites.Articles[i+1:]...)
+            break
+        }
+    }
+
+    if err := saveFavorites(favorites); err != nil { // Utiliser saveFavorites pour sauvegarder les modifications
+        http.Error(w, "Failed to save updated favorites", http.StatusInternalServerError)
+        return
+    }
+
+    http.Redirect(w, r, "/favoris", http.StatusFound)
 }
 
+func saveFavorites(favorites Favorites) error {
+    file, err := json.MarshalIndent(favorites, "", " ")
+    if err != nil {
+        return err
+    }
+    return ioutil.WriteFile(favoritesFilePath, file, 0644)
+}
+
+func loadFavorites() (Favorites, error) {
+    var favorites Favorites
+    file, err := ioutil.ReadFile(favoritesFilePath)
+    if err != nil {
+        return favorites, err
+    }
+    err = json.Unmarshal(file, &favorites)
+    return favorites, err
+}
+
+func erreur404Handler(w http.ResponseWriter, r *http.Request) {
+    w.WriteHeader(http.StatusNotFound) // Important : Définir le statut HTTP à 404
+    templates.ExecuteTemplate(w, "erreur404.html", nil)
+}
 
 func accueilHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -340,9 +407,4 @@ func accueilHandler(w http.ResponseWriter, r *http.Request) {
 func aproposHandler(w http.ResponseWriter, r *http.Request) {
 
 	templates.ExecuteTemplate(w, "apropos.html", r)
-}
-
-func erreur404Handler(w http.ResponseWriter, r *http.Request) {
-
-	templates.ExecuteTemplate(w, "erreur404.html", r)
 }

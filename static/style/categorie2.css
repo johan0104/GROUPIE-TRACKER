@@ -1,0 +1,151 @@
+* {
+    margin: 0;
+    padding: 0;
+    font-family: 'Poppins', sans-serif;
+}
+
+.header {
+    width: 100%;
+    height: 160px;
+    background-color: #241C1D;
+    align-items: center;
+    display: flex;
+    justify-content: center
+}
+
+.header nav{
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-evenly;
+    background-color: #241C1D;
+    
+}
+
+.header a{
+    text-decoration: none;
+    color: #F2F4FF;
+    font-size: 17px;
+    font-weight: 500;
+  
+}
+
+.header a:hover {
+    color: #2682d8;
+}
+ 
+.logo{
+    height: 167px;
+    width: 200px;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+* {
+    margin: 0;
+    padding: 0;
+    font-family: 'Poppins', sans-serif;
+}
+
+.footer {
+    background-color: #241C1D;
+    height: 276px;
+    width: 100%;
+    display: flex;
+    align-items:center;
+}
+
+.footer-container {
+    margin-left: 100px;
+    width: 100%;
+    flex-direction: column;
+    background-color: #241C1D;
+    
+}
+
+.footer nav{
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    background-color: #241C1D
+
+}
+
+.footer a{
+    text-decoration: none;
+    color: #F2F4FF;
+    font-size: 17px;
+    font-weight: 500;
+    margin-right: 20px;
+}
+
+.footer a:hover {
+    color: #2682d8;
+}
+
+.footer p {
+    color: #F2F4FF;
+    margin-right: 20px;
+}
+
+.footer-nav {
+    display: flex;
+    justify-content: space-between;
+    margin-right: 100px;
+    background-color: #241C1D;
+}
+
+.footer-nav img {
+    height: 40px;
+    width: 40px;
+    margin-bottom: 20px;
+    cursor: pointer;
+}
